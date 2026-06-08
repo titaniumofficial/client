@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Audio Splitter & Lyric Sync</title>
+    <script type="module">
+        import { Client } from "https://cdn.jsdelivr.net/npm/@gradio/client/dist/index.min.js";
+        window.GradioClient = Client; // Expose to global window
+    </script>
+    <style>
+        .hidden { display: none; }
+        .lyric-item { cursor: pointer; padding: 5px; border-bottom: 1px solid #ccc; }
+        .lyric-item.selected { background-color: #e0f7fa; border-left: 5px solid #00796b; }
+        .active-line { color: #00796b; font-weight: bold; font-size: 1.2em; margin: 10px 0; }
+    </style>
+</head>
+<body>
+
+    <div id="step1">
+        <input type="text" id="title" placeholder="Song Title">
+        <input type="text" id="artist" placeholder="Artist">
+        <button onclick="showUpload()">Next</button>
+    </div>
+
+    <div id="step2" class="hidden">
+        <input type="file" id="mp3Input" accept="audio/mp3">
+        <button onclick="processAudio()">Upload & Separate</button>
+        <p id="status"></p>
+    </div>
+
+    <div id="step3" class="hidden">
+        <h3>Vocals</h3>
+        <audio id="vocalPlayer" controls></audio>
+        <h3>Instrumental</h3>
+        <audio id="instPlayer" controls></audio>
+        <div id="activeLyrics" class="active-line">Lyrics will appear here...</div>
+        <h3>Available Lyrics</h3>
+        <div id="lyricList"></div>
+    </div>
+
+    <script>
+        let currentSync = [];
+
+        function showUpload() {
+            document.getElementById('step1').classList.add('hidden');
+            document.getElementById('step2').classList.remove('hidden');
+        }
+
+        async function processAudio() {
+            const status = document.getElementById('status');
+            status.innerText = "Processing on Hugging Face... please wait.";
+            
+            const file = document.getElementById('mp3Input').files[0];
+            
+            // Using the globally exposed GradioClient
+            const app = await window.GradioClient.connect("abidlabs/music-separation");
+            
+            const result = await app.predict("/predict", [file]);
+            
+            document.getElementById('vocalPlayer').src = result.data[0].url;
+            document.getElementById('instPlayer').src = result.data[1].url;
+
+            const title = document.getElementById('title').value;
+            const artist = document.getElementById('artist').value;
+            const lyricRes = await fetch(`https://lrclib.net/api/search?track_name=${title}&artist_name=${artist}`);
+            const data = await lyricRes.json();
+            renderLyricList(data);
+
+            document.getElementById('step2').classList.add('hidden');
+            document.getElementById('step3').classList.remove('hidden');
+        }
+
+        function renderLyricList(lyrics) {
+            const list = document.getElementById('lyricList');
+            list.innerHTML = '';
+            lyrics.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'lyric-item';
+                const mins = Math.floor(item.duration / 60);
+                const secs = String(Math.floor(item.duration % 60)).padStart(2, '0');
+                div.innerText = `${item.trackName} - ${mins}:${secs}`;
+                div.onclick = () => {
+                    document.querySelectorAll('.lyric-item').forEach(el => el.classList.remove('selected'));
+                    div.classList.add('selected');
+                    loadLyrics(item.id);
+                };
+                list.appendChild(div);
+            });
+        }
+
+        async function loadLyrics(id) {
+            const res = await fetch(`https://lrclib.net/api/get/${id}`);
+            const data = await res.json();
+            currentSync = parseLRC(data.syncedLyrics);
+        }
+
+        function parseLRC(lrc) {
+            return lrc.split('\n').map(line => {
+                const match = line.match(/\[(\d{2}):(\d{2}\.\d{2})\](.*)/);
+                return match ? { time: parseInt(match[1]) * 60 + parseFloat(match[2]), text: match[3] } : null;
+            }).filter(i => i);
+        }
+
+        const v = document.getElementById('vocalPlayer');
+        const i = document.getElementById('instPlayer');
+        
+        v.ontimeupdate = () => {
+            i.currentTime = v.currentTime;
+            const active = currentSync.find(l => Math.abs(l.time - v.currentTime) < 0.5);
+            if (active) document.getElementById('activeLyrics').innerText = active.text;
+        };
+    </script>
+</body>
+</html>
