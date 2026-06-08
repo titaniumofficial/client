@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Titanium</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: sans-serif;
+        }
+
+        /* Splash Screen */
+        #splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('/assets/pic1.jpg') no-repeat center center fixed;
+            background-size: cover;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .logo {
+            width: 600px;
+            height: auto;
+        }
+
+        /* Main Screen */
+        #main-screen {
+            display: none;
+            width: 100vw;
+            height: 100vh;
+            background: url('/assets/pic2.jpg') no-repeat center center fixed;
+            background-size: cover;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            position: relative;
+        }
+
+        #bottom-text {
+            position: absolute;
+            bottom: 30px;
+            font-size: 24px;
+            text-transform: uppercase;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="splash-screen">
+        <img class="logo" src="/assets/ic.png" alt="Logo">
+    </div>
+
+    <div id="main-screen">
+        <img class="logo" src="/assets/ic.png" alt="Logo">
+        <div id="bottom-text">Select A Song</div>
+    </div>
+
+    <script>
+        window.onload = function() {
+            setTimeout(function() {
+                document.getElementById('splash-screen').style.display = 'none';
+                document.getElementById('main-screen').style.display = 'flex';
+            }, 10000); // 10 seconds
+        };
+    </script>
+</body>
+</html>
